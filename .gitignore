@@ -1,0 +1,11 @@
+# build
+build
+cmake-build-debug
+
+# npcap
+npcap-1.13/docs
+npcap-1.13/Examples*
+npcap-1.13/Npcap_Guide.html
+
+# clion
+.idea

@@ -1,0 +1,2 @@
+file(GLOB_RECURSE SRCS *.cpp *.qrc *.ui)
+set(SOURCE_FILES ${SRCS} PARENT_SCOPE)
