@@ -9,7 +9,7 @@
 #include <QModelIndex>
 #include <pcap.h>
 #include <thread>
-#include "packet.h"
+#include "protocol.h"
 #include "sniffer.h"
 
 
@@ -39,7 +39,7 @@ private:
     void set_adapter_list();
 
 signals:
-    void packet_table_widget_packet_received(Packet);
+    void packet_table_widget_packet_received(ParsedPacket *, timeval);
 
 public slots:
     void adapter_chosen(const QModelIndex& index);

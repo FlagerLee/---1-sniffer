@@ -6,6 +6,8 @@
 
 #include "ui/sniffer_mainwindow.h"
 #include "ui/packet_table_widget.h"
+#include "ui/meta_info_widget.h"
+#include "ui/origin_packet_widget.h"
 #include "ui_sniffer_mainwindow.h"
 #include "sniffer.h"
 #include <QListWidget>
@@ -15,7 +17,6 @@
 
 sniffer_mainwindow::sniffer_mainwindow(QWidget *parent) :
         QMainWindow(parent), ui(new Ui::sniffer_mainwindow) {
-    ui->setupUi(this);
     this->start_central = new QWidget();
     this->setCentralWidget(start_central);
     auto layout = new QVBoxLayout();
@@ -27,16 +28,31 @@ sniffer_mainwindow::sniffer_mainwindow(QWidget *parent) :
     auto sniff_layout = new QVBoxLayout();
     // display packets received
     auto packet_table_widget = new PacketTableWidget();
-    packet_table_widget->setObjectName("packet_table_widget");
     sniff_layout->addWidget(packet_table_widget);
-    // display meta info
-    auto meta_info_widget = new QTreeWidget();
-    meta_info_widget->setObjectName("meta_info_widget");
-    sniff_layout->addWidget(meta_info_widget);
+
+    // display meta info and origin packet
+    auto hlayout = new QHBoxLayout();
+    auto meta_info_widget = new MetaInfoWidget();
+    hlayout->addWidget(meta_info_widget);
+    auto origin_packet_widget = new OriginPacketWidget();
+    hlayout->addWidget(origin_packet_widget);
+
+    sniff_layout->addLayout(hlayout);
+
     this->sniff_central->setLayout(sniff_layout);
 
     // connection
-    connect(this, &sniffer_mainwindow::packet_table_widget_packet_received, packet_table_widget, &PacketTableWidget::on_packet_received, Qt::DirectConnection);
+    connect(this, &sniffer_mainwindow::packet_table_widget_packet_received, packet_table_widget,
+            &PacketTableWidget::on_packet_received, Qt::DirectConnection);
+    connect(packet_table_widget, &PacketTableWidget::cellClicked, packet_table_widget,
+            &PacketTableWidget::on_cell_clicked);
+    connect(packet_table_widget, &PacketTableWidget::packet_chosen, meta_info_widget, &MetaInfoWidget::show_packet,
+            Qt::DirectConnection);
+    connect(packet_table_widget, &PacketTableWidget::packet_chosen, origin_packet_widget,
+            &OriginPacketWidget::show_packet, Qt::DirectConnection);
+
+
+    ui->setupUi(this);
 }
 
 sniffer_mainwindow::~sniffer_mainwindow() {
@@ -46,7 +62,7 @@ sniffer_mainwindow::~sniffer_mainwindow() {
 void sniffer_mainwindow::set_adapter_list() {
     auto adapter_widget = new QListWidget();
     adaptors_info = getAllAdapters();
-    for(auto info: adaptors_info) {
+    for (auto info: adaptors_info) {
         adapter_widget->addItem(QString::fromLocal8Bit(info.description.c_str()));
     }
     this->centralWidget()->layout()->addWidget(adapter_widget);
@@ -54,7 +70,7 @@ void sniffer_mainwindow::set_adapter_list() {
 }
 
 void sniffer_mainwindow::closeEvent(QCloseEvent *) {
-    if(sniff_thread.joinable()) {
+    if (sniff_thread.joinable()) {
         pcap_breakloop(adapter_fp);
     }
 }
@@ -62,6 +78,6 @@ void sniffer_mainwindow::closeEvent(QCloseEvent *) {
 void sniffer_mainwindow::adapter_chosen(const QModelIndex &index) {
     auto adapters = getAllAdapters();
     adapter_fp = pcap_open_live(adaptors_info[index.row()].name.c_str(), 65535, 1, 1000, nullptr);
-    sniff_thread = startSniffing(adapter_fp, packet_handler, SIGNAL_NAME::PACKET_TABLE_WIDGET_PACKET_RECEIVED, this);
+    sniff_thread = startSniffing(adapter_fp, packet_handler, this);
     this->setCentralWidget(sniff_central);
 }

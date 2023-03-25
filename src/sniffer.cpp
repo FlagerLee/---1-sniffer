@@ -4,8 +4,6 @@
 
 #include "ui/sniffer_mainwindow.h"
 #include "sniffer.h"
-#include "packet.h"
-#include <thread>
 
 using std::vector;
 
@@ -39,16 +37,12 @@ int setFilter(pcap_t *fp, const char *filter, bpf_u_int32 net_mask) {
     return 0;
 }
 
-std::thread startSniffing(pcap_t *fp, pcap_handler handler, SIGNAL_NAME name, QMainWindow *mainwindow) {
-    std::thread sniff_thread([](pcap_t *fp, pcap_handler handler, SIGNAL_NAME name, QMainWindow *mainwindow) {
+std::thread startSniffing(pcap_t *fp, pcap_handler handler, QMainWindow *mainwindow) {
+    std::thread sniff_thread([](pcap_t *fp, pcap_handler handler, QMainWindow *mainwindow) {
         printf("Start Sniffing\n");
-        struct {SIGNAL_NAME s_name; QMainWindow *s_window;} user {
-            name,
-            mainwindow
-        };
-        int res = pcap_loop(fp, -1, handler, (u_char*)&user);
+        int res = pcap_loop(fp, -1, handler, (u_char*)mainwindow);
         printf("Stop Sniffing\n");
-    }, fp, handler, name, mainwindow);
+    }, fp, handler, mainwindow);
     return sniff_thread;
 }
 

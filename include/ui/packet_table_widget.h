@@ -7,24 +7,29 @@
 
 #include <QTableWidget>
 #include <vector>
-#include "packet.h"
+#include "protocol.h"
 
-class PacketTableWidget: public QTableWidget {
-    Q_OBJECT
+class PacketTableWidget : public QTableWidget {
+Q_OBJECT
 public:
     PacketTableWidget();
-    ~PacketTableWidget() override =default;
+
+    ~PacketTableWidget();
 
 private:
-    std::vector<Packet> packets;
+    std::vector<ParsedPacket *> packets;
     int index;
     timeval start_time;
 
 signals:
-    void packet_received(Packet);
+
+    void packet_chosen(ParsedPacket *packet);
 
 public slots:
-    void on_packet_received(Packet packet);
+
+    void on_packet_received(ParsedPacket *packet, timeval tv);
+    void on_cell_clicked(int row, int column);
+
 };
 
 #endif //SNIFFER_PACKET_TABLE_WIDGET_H

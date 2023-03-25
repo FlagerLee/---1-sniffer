@@ -4,7 +4,6 @@
 #include <windows.h>
 #include <iostream>
 #include "ui/sniffer_mainwindow.h"
-#include "packet.h"
 
 
 int main(int argc, char *argv[]) {

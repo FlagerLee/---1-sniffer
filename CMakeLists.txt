@@ -20,17 +20,17 @@ set(CPP_SRC
         main.cpp
         src/sniffer.cpp
         src/ui/sniffer_mainwindow.cpp
-        src/packet.cpp src/ui/packet_table_widget.cpp)
+        src/ui/packet_table_widget.cpp src/protocol.cpp src/ui/meta_info_widget.cpp)
 set(QRC_SRC)
 set(UI_SRC
         src/ui/sniffer_mainwindow.ui
         )
 set(HEADERS
         include/sniffer.h
-        include/packet.h)
+        include/packet_header.h)
 set(QT_HEADERS
         include/ui/sniffer_mainwindow.h
-        include/ui/packet_table_widget.h include/protocol.h)
+        include/ui/packet_table_widget.h include/protocol.h include/ui/meta_info_widget.h include/ui/origin_packet_widget.h src/ui/origin_packet_widget.cpp)
 
 add_executable(sniffer
         ${CPP_SRC}

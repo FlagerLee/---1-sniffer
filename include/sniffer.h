@@ -6,7 +6,6 @@
 #define SNIFFER_SNIFFER_H
 
 #include <QMainWindow>
-#include "packet.h"
 #include <vector>
 #include <pcap.h>
 #include <thread>
@@ -23,7 +22,7 @@ std::vector<AdaptorInfo> getAllAdapters();
 
 int setFilter(pcap_t *fp, const char *filter, bpf_u_int32 net_mask);
 
-std::thread startSniffing(pcap_t *fp, pcap_handler handler, SIGNAL_NAME name, QMainWindow *mainwindow);
+std::thread startSniffing(pcap_t *fp, pcap_handler handler, QMainWindow *mainwindow);
 
 void stopSniffing(pcap_t *fp);
 

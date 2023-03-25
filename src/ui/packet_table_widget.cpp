@@ -6,7 +6,7 @@
 #include <QHeaderView>
 #include "protocol.h"
 
-#define IP_STR_LEN 40
+#define IP_STR_LEN 45
 
 // from glibc
 int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval *y)
@@ -32,17 +32,12 @@ int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval 
     return x->tv_sec < y->tv_sec;
 }
 
-void PacketTableWidget::on_packet_received(Packet packet) {
-    if(start_time.tv_sec == 0 && start_time.tv_usec == 0) start_time = packet.recv_time;
+void PacketTableWidget::on_packet_received(ParsedPacket *packet, timeval tv) {
+    if(start_time.tv_sec == 0 && start_time.tv_usec == 0) start_time = tv;
     char *src_ip = new char[IP_STR_LEN];
     char *dst_ip = new char[IP_STR_LEN];
-    if (packet.ip_type == IPV4_TYPE) {
-        inet_ntop(AF_INET, &packet.src_addr, src_ip, IP_STR_LEN);
-        inet_ntop(AF_INET, &packet.src_addr, dst_ip, IP_STR_LEN);
-    } else if (packet.ip_type == IPV6_TYPE) {
-        inet_ntop(AF_INET6, &packet.src_addr6, src_ip, IP_STR_LEN);
-        inet_ntop(AF_INET6, &packet.src_addr6, dst_ip, IP_STR_LEN);
-    }
+    packet->get_src_addr(src_ip);
+    packet->get_dst_addr(dst_ip);
     // insert row
     int row = this->rowCount();
     this->insertRow(row);
@@ -51,7 +46,7 @@ void PacketTableWidget::on_packet_received(Packet packet) {
     // set time
     char time_str[100];
     timeval time_since_start;
-    timeval_subtract(&time_since_start, &packet.recv_time, &start_time);
+    timeval_subtract(&time_since_start, &tv, &start_time);
     sprintf(time_str, "%ld.%06ld", time_since_start.tv_sec, time_since_start.tv_usec);
     this->setItem(row, 1, new QTableWidgetItem(time_str));
     // set source
@@ -59,31 +54,20 @@ void PacketTableWidget::on_packet_received(Packet packet) {
     // set destination
     this->setItem(row, 3, new QTableWidgetItem(dst_ip));
     // set protocol
-    switch (packet.protocol) {
-        case IPPROTO_ICMP:
-            this->setItem(row, 4, new QTableWidgetItem("ICMP"));
-            break;
-        case IPPROTO_IGMP:
-            this->setItem(row, 4, new QTableWidgetItem("IGMP"));
-            break;
-        case IPPROTO_TCP:
-            this->setItem(row, 4, new QTableWidgetItem("TCP"));
-            break;
-        case IPPROTO_UDP:
-            this->setItem(row, 4, new QTableWidgetItem("UDP"));
-            break;
-        case IPPROTO_ICMPV6:
-            this->setItem(row, 4, new QTableWidgetItem("ICMPV6"));
-            break;
-        default:
-            this->setItem(row, 4, new QTableWidgetItem((std::string("Unknown Protocol") + std::to_string((int)packet.protocol)).c_str()));
-    }
+    char protocol_name[20];
+    packet->get_protocol(protocol_name);
+    this->setItem(row, 4, new QTableWidgetItem(protocol_name));
     // set length
-    this->setItem(row, 5, new QTableWidgetItem(std::to_string(packet.length).c_str()));
+    this->setItem(row, 5, new QTableWidgetItem(std::to_string(packet->packet_length).c_str()));
     // set info
+    char info[200];
+    packet->get_info(info);
+    this->setItem(row, 6, new QTableWidgetItem(info));
+    // set tree widget
 
     // add packet
     packets.emplace_back(packet);
+
 }
 
 PacketTableWidget::PacketTableWidget() : index(1) {
@@ -101,7 +85,18 @@ PacketTableWidget::PacketTableWidget() : index(1) {
     this->setHorizontalHeaderLabels(table_header);
     this->horizontalHeader()->setStretchLastSection(true);
     this->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    this->setSelectionBehavior(QTableWidget::SelectRows);
+    this->verticalHeader()->setVisible(false);
+    this->setShowGrid(false);
+    this->setFont(QFont("Source Code Pro", 9));
 
     start_time.tv_sec = 0;
     start_time.tv_usec = 0;
+}
+
+PacketTableWidget::~PacketTableWidget() {
+}
+
+void PacketTableWidget::on_cell_clicked(int row, int column) {
+    emit packet_chosen(packets[row]);
 }
