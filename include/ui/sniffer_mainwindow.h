@@ -12,6 +12,10 @@
 #include "protocol.h"
 #include "sniffer.h"
 
+#include "ui/packet_table_widget.h"
+#include "ui/meta_info_widget.h"
+#include "ui/origin_packet_widget.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class sniffer_mainwindow; }
@@ -30,19 +34,25 @@ protected:
 
 private:
     Ui::sniffer_mainwindow *ui;
-    QWidget *start_central;
     QWidget *sniff_central;
     std::thread sniff_thread;
     pcap_t *adapter_fp;
     std::vector<AdaptorInfo> adaptors_info;
+    QToolBar *tool_bar;
 
-    void set_adapter_list();
+    PacketTableWidget *packet_table_widget;
+    MetaInfoWidget *meta_info_widget;
+    OriginPacketWidget *origin_packet_widget;
 
 signals:
     void packet_table_widget_packet_received(ParsedPacket *, timeval);
+    void filter_set(std::vector<std::string>);
 
 public slots:
-    void adapter_chosen(const QModelIndex& index);
+    void adapter_chosen(int index);
+    void filter_chosen(int index);
+    void stop_sniffing();
+    void start_sniffing();
 };
 
 

@@ -39,9 +39,7 @@ int setFilter(pcap_t *fp, const char *filter, bpf_u_int32 net_mask) {
 
 std::thread startSniffing(pcap_t *fp, pcap_handler handler, QMainWindow *mainwindow) {
     std::thread sniff_thread([](pcap_t *fp, pcap_handler handler, QMainWindow *mainwindow) {
-        printf("Start Sniffing\n");
         int res = pcap_loop(fp, -1, handler, (u_char*)mainwindow);
-        printf("Stop Sniffing\n");
     }, fp, handler, mainwindow);
     return sniff_thread;
 }

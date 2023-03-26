@@ -17,7 +17,7 @@ class ParsedPacket {
 public:
     ParsedPacket(const u_char *data, uint32_t length);
 
-    ~ParsedPacket()=default;
+    ~ParsedPacket() = default;
 
     virtual void get_info(char *) = 0;
 
@@ -28,6 +28,24 @@ public:
     virtual void get_src_addr(char *) = 0;
 
     virtual void get_dst_addr(char *) = 0;
+
+    virtual bool is_ipv4() = 0;
+
+    virtual bool is_ipv6() = 0;
+
+    virtual bool is_arp() = 0;
+
+    virtual bool is_tcp() = 0;
+
+    virtual bool is_udp() = 0;
+
+    virtual bool is_icmp() = 0;
+
+    virtual bool is_icmpv6() = 0;
+
+    virtual bool is_http() = 0;
+
+    virtual bool is_tls() = 0;
 
     void fill_table(QTableWidget *widget);
 
@@ -63,6 +81,12 @@ public:
 
     void get_dst_addr(char *) override;
 
+    bool is_ipv4() override;
+
+    bool is_ipv6() override;
+
+    bool is_arp() override;
+
     IPV4Header ipv4_header;
     IPV4Option ipv4_option;
     uint32_t offset;
@@ -82,6 +106,12 @@ public:
 
     void get_dst_addr(char *) override;
 
+    bool is_ipv4() override;
+
+    bool is_ipv6() override;
+
+    bool is_arp() override;
+
     IPV6Header ipv6_header;
     uint32_t offset;
 };
@@ -97,6 +127,24 @@ public:
     void get_info(char *) override;
 
     void get_protocol(char *) override;
+
+    bool is_ipv4() override;
+
+    bool is_ipv6() override;
+
+    bool is_arp() override;
+
+    bool is_tcp() override;
+
+    bool is_udp() override;
+
+    bool is_icmp() override;
+
+    bool is_icmpv6() override;
+
+    bool is_http() override;
+
+    bool is_tls() override;
 
     uint32_t offset;
 };
@@ -117,12 +165,34 @@ public:
 
     void get_dst_addr(char *) override;
 
+    bool is_ipv4() override;
+
+    bool is_ipv6() override;
+
+    bool is_arp() override;
+
+    bool is_tcp() override;
+
+    bool is_udp() override;
+
+    bool is_icmp() override;
+
+    bool is_icmpv6() override;
+
+    bool is_http() override;
+
+    bool is_tls() override;
+
     [[nodiscard]] std::string get_flag_name() const;
+
+    [[nodiscard]] bool detect_http() const;
+
+    [[nodiscard]] bool detect_tls() const;
 
     TCPHeader tcp_header;
     uint32_t offset;
     uint32_t total_offset;
-    bool is_ipv4;
+    bool packet_is_ipv4;
 
     bool acc, cwr, ech, urg, ack, psh, rst, syn, fin;
 };
@@ -143,10 +213,28 @@ public:
 
     void get_dst_addr(char *) override;
 
+    bool is_ipv4() override;
+
+    bool is_ipv6() override;
+
+    bool is_arp() override;
+
+    bool is_tcp() override;
+
+    bool is_udp() override;
+
+    bool is_icmp() override;
+
+    bool is_icmpv6() override;
+
+    bool is_http() override;
+
+    bool is_tls() override;
+
     UDPHeader udp_header;
     uint32_t offset;
     uint32_t total_offset;
-    bool is_ipv4;
+    bool packet_is_ipv4;
 };
 
 class ICMPPacket : public IPV4Packet {
@@ -160,6 +248,18 @@ public:
     void fill(QTreeWidget *widget) override;
 
     void get_protocol(char *) override;
+
+    bool is_tcp() override;
+
+    bool is_udp() override;
+
+    bool is_icmp() override;
+
+    bool is_icmpv6() override;
+
+    bool is_http() override;
+
+    bool is_tls() override;
 
     ICMPHeader icmp_header;
 
@@ -182,6 +282,18 @@ public:
     void fill(QTreeWidget *widget) override;
 
     void get_protocol(char *) override;
+
+    bool is_tcp() override;
+
+    bool is_udp() override;
+
+    bool is_icmp() override;
+
+    bool is_icmpv6() override;
+
+    bool is_http() override;
+
+    bool is_tls() override;
 
     ICMPV6Header icmpv6_header;
 
@@ -207,6 +319,38 @@ public:
         in6_addr target_addr;
         u_char option;
     } s136;
+};
+
+class HTTPPacket : public TCPPacket {
+public:
+    explicit HTTPPacket(const u_char *data, uint32_t length);
+
+    ~HTTPPacket() = default;
+
+    void get_info(char *) override;
+
+    void fill(QTreeWidget *widget) override;
+
+    void get_protocol(char *) override;
+
+    bool is_http() override;
+};
+
+class TLSPacket : public TCPPacket {
+public:
+    explicit TLSPacket(const u_char *data, uint32_t length);
+
+    ~TLSPacket() = default;
+
+    void get_info(char *) override;
+
+    void fill(QTreeWidget *widget) override;
+
+    void get_protocol(char *) override;
+
+    bool is_tls() override;
+
+    TLSHeader tls_header;
 };
 
 ParsedPacket *parse(const u_char *data, uint32_t length);

@@ -21,7 +21,8 @@ set(CPP_SRC
         src/sniffer.cpp
         src/ui/sniffer_mainwindow.cpp
         src/ui/packet_table_widget.cpp src/protocol.cpp src/ui/meta_info_widget.cpp)
-set(QRC_SRC)
+set(QRC_SRC
+        resources/resource.qrc)
 set(UI_SRC
         src/ui/sniffer_mainwindow.ui
         )

@@ -249,11 +249,23 @@ void IPV4Packet::fill(QTreeWidget *widget) {
     sprintf(dst_addr_info, "Destination Address: %s", dst_addr);
     auto dst_addr_item = new QTreeWidgetItem(QStringList{dst_addr_info});
 
-    top_item->addChildren(QList < QTreeWidgetItem * > {
+    top_item->addChildren(QList<QTreeWidgetItem *>{
             version_item, length_item, tos_item, total_length_item, ident_item, flags_item,
             offset_item, ttl_item, protocol_item, checksum_item, src_addr_item, dst_addr_item
     });
     widget->addTopLevelItem(top_item);
+}
+
+bool IPV4Packet::is_ipv4() {
+    return true;
+}
+
+bool IPV4Packet::is_ipv6() {
+    return false;
+}
+
+bool IPV4Packet::is_arp() {
+    return false;
 }
 
 // ------------------------------IPV6Packet------------------------------
@@ -356,6 +368,18 @@ void IPV6Packet::fill(QTreeWidget *widget) {
     widget->addTopLevelItem(top_item);
 }
 
+bool IPV6Packet::is_ipv4() {
+    return false;
+}
+
+bool IPV6Packet::is_ipv6() {
+    return true;
+}
+
+bool IPV6Packet::is_arp() {
+    return false;
+}
+
 // ------------------------------ARPPacket------------------------------
 
 ARPPacket::ARPPacket(const u_char *data, uint32_t length) : EthernetPacket(data, length) {
@@ -374,12 +398,48 @@ void ARPPacket::get_protocol(char *str) {
     sprintf(str, "ARP");
 }
 
+bool ARPPacket::is_ipv4() {
+    return false;
+}
+
+bool ARPPacket::is_ipv6() {
+    return false;
+}
+
+bool ARPPacket::is_arp() {
+    return true;
+}
+
+bool ARPPacket::is_tcp() {
+    return false;
+}
+
+bool ARPPacket::is_udp() {
+    return false;
+}
+
+bool ARPPacket::is_icmp() {
+    return false;
+}
+
+bool ARPPacket::is_icmpv6() {
+    return false;
+}
+
+bool ARPPacket::is_http() {
+    return false;
+}
+
+bool ARPPacket::is_tls() {
+    return false;
+}
+
 // ------------------------------TCPPacket------------------------------
 
 TCPPacket::TCPPacket(const u_char *data, uint32_t length) : EthernetPacket(data, length), IPV4Packet(data, length),
                                                             IPV6Packet(data, length) {
-    is_ipv4 = EthernetPacket::ethernet_header.eth_type == ETH_IPV4;
-    if (is_ipv4)
+    packet_is_ipv4 = EthernetPacket::ethernet_header.eth_type == ETH_IPV4;
+    if (packet_is_ipv4)
         tcp_header = *(TCPHeader *) (ParsedPacket::data + EthernetPacket::offset + IPV4Packet::offset);
     else
         tcp_header = *(TCPHeader *) (ParsedPacket::data + EthernetPacket::offset + IPV6Packet::offset);
@@ -391,8 +451,8 @@ TCPPacket::TCPPacket(const u_char *data, uint32_t length) : EthernetPacket(data,
     tcp_header.window = ntohs(tcp_header.window);
     tcp_header.checksum = ntohs(tcp_header.checksum);
     tcp_header.urgent_ptr = ntohs(tcp_header.urgent_ptr);
-    offset = (tcp_header.hl_rsv_flags & TCP_HL_MASK) >> TCP_HL_OFFSET;
-    if (is_ipv4) total_offset = EthernetPacket::offset + IPV4Packet::offset + offset;
+    offset = ((tcp_header.hl_rsv_flags & TCP_HL_MASK) >> TCP_HL_OFFSET) * 4;
+    if (packet_is_ipv4) total_offset = EthernetPacket::offset + IPV4Packet::offset + offset;
     else total_offset = EthernetPacket::offset + IPV6Packet::offset + offset;
 
     uint16_t flags = (tcp_header.hl_rsv_flags & TCP_FLAGS_MASK) >> TCP_FLAGS_OFFSET;
@@ -408,17 +468,17 @@ TCPPacket::TCPPacket(const u_char *data, uint32_t length) : EthernetPacket(data,
 }
 
 void TCPPacket::get_src_addr(char *str) {
-    if (is_ipv4) IPV4Packet::get_src_addr(str);
+    if (packet_is_ipv4) IPV4Packet::get_src_addr(str);
     else IPV6Packet::get_src_addr(str);
 }
 
 void TCPPacket::get_dst_addr(char *str) {
-    if (is_ipv4) IPV4Packet::get_dst_addr(str);
+    if (packet_is_ipv4) IPV4Packet::get_dst_addr(str);
     else IPV6Packet::get_dst_addr(str);
 }
 
 void TCPPacket::fill(QTreeWidget *widget) {
-    if (is_ipv4) IPV4Packet::fill(widget);
+    if (packet_is_ipv4) IPV4Packet::fill(widget);
     else IPV6Packet::fill(widget);
 
     char top_info[200];
@@ -503,13 +563,50 @@ void TCPPacket::get_info(char *str) {
     sprintf(str, "%d -> %d [%s] Ack=%d Win=%d Len=%d",
             tcp_header.src_port, tcp_header.dst_port, get_flag_name().c_str(), tcp_header.ack_num,
             tcp_header.window,
-            ParsedPacket::packet_length - EthernetPacket::offset - (is_ipv4 ? IPV4Packet::offset : IPV6Packet::offset) -
+            ParsedPacket::packet_length - EthernetPacket::offset -
+            (packet_is_ipv4 ? IPV4Packet::offset : IPV6Packet::offset) -
             offset
     );
 }
 
 void TCPPacket::get_protocol(char *str) {
     sprintf(str, "TCP");
+}
+
+bool TCPPacket::is_ipv4() {
+    return packet_is_ipv4;
+}
+
+bool TCPPacket::is_ipv6() {
+    return !packet_is_ipv4;
+}
+
+bool TCPPacket::is_arp() {
+    return false;
+}
+
+bool TCPPacket::is_tcp() {
+    return true;
+}
+
+bool TCPPacket::is_udp() {
+    return false;
+}
+
+bool TCPPacket::is_icmp() {
+    return false;
+}
+
+bool TCPPacket::is_icmpv6() {
+    return false;
+}
+
+bool TCPPacket::is_http() {
+    return false;
+}
+
+bool TCPPacket::is_tls() {
+    return false;
 }
 
 std::string TCPPacket::get_flag_name() const {
@@ -569,12 +666,42 @@ std::string TCPPacket::get_flag_name() const {
     return name;
 }
 
+bool TCPPacket::detect_http() const {
+    if ((data[total_offset] == 'G' && data[total_offset + 1] == 'E' && data[total_offset + 2] == 'T') ||
+        (data[total_offset] == 'H' && data[total_offset + 1] == 'E' && data[total_offset + 2] == 'A' &&
+         data[total_offset + 3] == 'D') ||
+        (data[total_offset] == 'P' && data[total_offset + 1] == 'O' && data[total_offset + 2] == 'S' &&
+         data[total_offset + 3] == 'T') ||
+        (data[total_offset] == 'P' && data[total_offset + 1] == 'U' && data[total_offset + 2] == 'T') ||
+        (data[total_offset] == 'D' && data[total_offset + 1] == 'E' && data[total_offset + 2] == 'L' &&
+         data[total_offset + 3] == 'E' && data[total_offset + 4] == 'T' && data[total_offset + 5] == 'E') ||
+        (data[total_offset] == 'O' && data[total_offset + 1] == 'P' && data[total_offset + 2] == 'T' &&
+         data[total_offset + 3] == 'I' && data[total_offset + 4] == 'O' && data[total_offset + 5] == 'N' &&
+         data[total_offset + 6] == 'S') ||
+        (data[total_offset] == 'T' && data[total_offset + 1] == 'R' && data[total_offset + 2] == 'A' &&
+         data[total_offset + 3] == 'C' && data[total_offset + 4] == 'E') ||
+        (data[total_offset] == 'C' && data[total_offset + 1] == 'O' && data[total_offset + 2] == 'N' &&
+         data[total_offset + 3] == 'N' && data[total_offset + 4] == 'E' && data[total_offset + 5] == 'C' &&
+         data[total_offset + 6] == 'T') ||
+        (data[total_offset] == 'H' && data[total_offset + 1] == 'T' && data[total_offset + 2] == 'T' &&
+         data[total_offset + 3] == 'P')
+            )
+        return true;
+    return false;
+}
+
+bool TCPPacket::detect_tls() const {
+    TLSHeader header = *(TLSHeader *) (data + total_offset);
+    return (header.version_major == 0x03 && (header.version_minor == 0x01 || header.version_minor == 0x03)) &&
+           (header.type == 20 || header.type == 21 || header.type == 22 || header.type == 23 || header.type == 24);
+}
+
 // ------------------------------UDPPacket------------------------------
 
 UDPPacket::UDPPacket(const u_char *data, uint32_t length) : EthernetPacket(data, length), IPV4Packet(data, length),
                                                             IPV6Packet(data, length) {
-    is_ipv4 = EthernetPacket::ethernet_header.eth_type == ETH_IPV4;
-    if (is_ipv4)
+    packet_is_ipv4 = EthernetPacket::ethernet_header.eth_type == ETH_IPV4;
+    if (packet_is_ipv4)
         udp_header = *(UDPHeader *) (ParsedPacket::data + EthernetPacket::offset + IPV4Packet::offset);
     else
         udp_header = *(UDPHeader *) (ParsedPacket::data + EthernetPacket::offset + IPV6Packet::offset);
@@ -583,22 +710,22 @@ UDPPacket::UDPPacket(const u_char *data, uint32_t length) : EthernetPacket(data,
     udp_header.length = ntohs(udp_header.length);
     udp_header.checksum = ntohs(udp_header.checksum);
     offset = 8;
-    if (is_ipv4) total_offset = EthernetPacket::offset + IPV4Packet::offset + offset;
+    if (packet_is_ipv4) total_offset = EthernetPacket::offset + IPV4Packet::offset + offset;
     else total_offset = EthernetPacket::offset + IPV6Packet::offset + offset;
 }
 
 void UDPPacket::get_src_addr(char *str) {
-    if (is_ipv4) IPV4Packet::get_src_addr(str);
+    if (packet_is_ipv4) IPV4Packet::get_src_addr(str);
     else IPV6Packet::get_src_addr(str);
 }
 
 void UDPPacket::get_dst_addr(char *str) {
-    if (is_ipv4) IPV4Packet::get_dst_addr(str);
+    if (packet_is_ipv4) IPV4Packet::get_dst_addr(str);
     else IPV6Packet::get_dst_addr(str);
 }
 
 void UDPPacket::fill(QTreeWidget *widget) {
-    if (is_ipv4) IPV4Packet::fill(widget);
+    if (packet_is_ipv4) IPV4Packet::fill(widget);
     else IPV6Packet::fill(widget);
 
     char top_info[80];
@@ -634,6 +761,42 @@ void UDPPacket::get_info(char *str) {
 
 void UDPPacket::get_protocol(char *str) {
     sprintf(str, "UDP");
+}
+
+bool UDPPacket::is_ipv4() {
+    return packet_is_ipv4;
+}
+
+bool UDPPacket::is_ipv6() {
+    return !packet_is_ipv4;
+}
+
+bool UDPPacket::is_arp() {
+    return false;
+}
+
+bool UDPPacket::is_tcp() {
+    return false;
+}
+
+bool UDPPacket::is_udp() {
+    return true;
+}
+
+bool UDPPacket::is_icmp() {
+    return false;
+}
+
+bool UDPPacket::is_icmpv6() {
+    return false;
+}
+
+bool UDPPacket::is_http() {
+    return false;
+}
+
+bool UDPPacket::is_tls() {
+    return false;
 }
 
 // ------------------------------ICMPPacket------------------------------
@@ -705,16 +868,10 @@ void ICMPPacket::fill(QTreeWidget *widget) {
             sprintf(data_top_info, "Data (%d bytes)", data_length);
             auto data_top_item = new QTreeWidgetItem(QStringList{data_top_info});
 
-            char *data_info = new char[10 + data_length];
-            sprintf(data_info, "Data: ");
-            memcpy(data_info + 6, data, data_length);
-            auto data_info_item = new QTreeWidgetItem(QStringList{data_info});
-            delete[] data_info;
-
             char data_length_info[20];
             sprintf(data_length_info, "[Length: %d]", data_length);
             auto data_length_item = new QTreeWidgetItem(QStringList{data_length_info});
-            data_top_item->addChildren(QList<QTreeWidgetItem *>{data_info_item, data_length_item});
+            data_top_item->addChildren(QList<QTreeWidgetItem *>{data_length_item});
             top_item->addChild(data_top_item);
         }
     } else if (icmp_header.type == 11) {
@@ -765,6 +922,30 @@ void ICMPPacket::get_protocol(char *str) {
     sprintf(str, "ICMP");
 }
 
+bool ICMPPacket::is_tcp() {
+    return false;
+}
+
+bool ICMPPacket::is_udp() {
+    return false;
+}
+
+bool ICMPPacket::is_icmp() {
+    return true;
+}
+
+bool ICMPPacket::is_icmpv6() {
+    return false;
+}
+
+bool ICMPPacket::is_http() {
+    return false;
+}
+
+bool ICMPPacket::is_tls() {
+    return false;
+}
+
 // ------------------------------ICMPV6Packet------------------------------
 
 ICMPV6Packet::ICMPV6Packet(const u_char *data, uint32_t length) : EthernetPacket(data, length),
@@ -795,6 +976,70 @@ ICMPV6Packet::ICMPV6Packet(const u_char *data, uint32_t length) : EthernetPacket
 
 void ICMPV6Packet::fill(QTreeWidget *widget) {
     IPV6Packet::fill(widget);
+
+    auto top_item = new QTreeWidgetItem(QStringList{"Internet Control Message Protocol v6"});
+
+    char type_info[40];
+    switch (icmpv6_header.type) {
+        case 130:
+            sprintf(type_info, "Type: Multicast Listener Query (130)");
+            break;
+        case 131:
+            sprintf(type_info, "Type: Multicast Listener Report (131)");
+            break;
+        case 132:
+            sprintf(type_info, "Type: Multicast Listener Done (132)");
+            break;
+        case 135:
+            sprintf(type_info, "Type: Neighbor Solicitation (135)");
+            break;
+        case 136:
+            sprintf(type_info, "Type: Neighbor Advertisement (136)");
+            break;
+        default:
+            sprintf(type_info, "Type: Unresolved type (%d)", icmpv6_header.type);
+    }
+    auto type_item = new QTreeWidgetItem(QStringList{type_info});
+
+    char code_info[15];
+    sprintf(code_info, "Code: %d", icmpv6_header.code);
+    auto code_item = new QTreeWidgetItem(QStringList{code_info});
+
+    char checksum_info[30];
+    sprintf(checksum_info, "Checksum: 0x%04x", icmpv6_header.checksum);
+    auto checksum_item = new QTreeWidgetItem(QStringList{checksum_info});
+
+    top_item->addChildren(QList<QTreeWidgetItem *>{type_item, code_item, checksum_item});
+
+    switch (icmpv6_header.type) {
+        case 130:
+            break;
+        case 131:
+            break;
+        case 132:
+            break;
+        case 135: {
+            auto rsv_item = new QTreeWidgetItem(QStringList{"Reserved: 00000000"});
+            char addr_info[60] = "Target Address: ";
+            inet_ntop(AF_INET6, &s135.target_addr, addr_info + 16, 43);
+            auto addr_item = new QTreeWidgetItem(QStringList{addr_info});
+            top_item->addChildren(QList<QTreeWidgetItem *>{rsv_item, addr_item});
+            if (ParsedPacket::packet_length > EthernetPacket::offset + IPV6Packet::offset + 24) {
+                // has option
+                char option_info[80];
+                sprintf(option_info, "ICMPv6 Option (Source link-layer address : %02x:%02x:%02x:%02x:%02x:%02x)",
+                        s135.option[2], s135.option[3], s135.option[4], s135.option[5], s135.option[6], s135.option[7]
+                );
+                top_item->addChild(new QTreeWidgetItem(QStringList{option_info}));
+            }
+            break;
+        }
+        case 136: {
+            break;
+        }
+    }
+
+    widget->addTopLevelItem(top_item);
 }
 
 void ICMPV6Packet::get_info(char *str) {
@@ -841,6 +1086,9 @@ void ICMPV6Packet::get_info(char *str) {
             sprintf(str, "Neighbor Advertisement %s%s", addr6, flags.c_str());
             break;
         }
+        default:
+            sprintf(str, "Unresolved type: %d", icmpv6_header.type);
+            break;
     }
 }
 
@@ -848,46 +1096,81 @@ void ICMPV6Packet::get_protocol(char *str) {
     sprintf(str, "ICMPv6");
 }
 
+bool ICMPV6Packet::is_tcp() {
+    return false;
+}
+
+bool ICMPV6Packet::is_udp() {
+    return false;
+}
+
+bool ICMPV6Packet::is_icmp() {
+    return false;
+}
+
+bool ICMPV6Packet::is_icmpv6() {
+    return true;
+}
+
+bool ICMPV6Packet::is_http() {
+    return false;
+}
+
+bool ICMPV6Packet::is_tls() {
+    return false;
+}
+
 ParsedPacket *parse(const u_char *data, uint32_t length) {
     uint16_t eth_protocol = EthernetPacket::parse_protocol(data);
     ParsedPacket *packet = nullptr;
-    switch (eth_protocol) {
-        case ETH_IPV4: {
-            uint8_t ipv4_protocol = IPV4Packet::parse_protocol(data);
-            switch (ipv4_protocol) {
-                case IPPROTO_TCP: {
-                    packet = new TCPPacket(data, length);
-                    break;
+    try {
+        switch (eth_protocol) {
+            case ETH_IPV4: {
+                uint8_t ipv4_protocol = IPV4Packet::parse_protocol(data);
+                switch (ipv4_protocol) {
+                    case IPPROTO_TCP: {
+                        auto tcp_packet = new TCPPacket(data, length);
+                        if (tcp_packet->detect_tls()) packet = new TLSPacket(data, length);
+                        else if (tcp_packet->detect_http()) packet = new HTTPPacket(data, length);
+                        else packet = tcp_packet;
+                        break;
+                    }
+                    case IPPROTO_UDP: {
+                        packet = new UDPPacket(data, length);
+                        break;
+                    }
+                    case IPPROTO_ICMP: {
+                        packet = new ICMPPacket(data, length);
+                        break;
+                    }
                 }
-                case IPPROTO_UDP: {
-                    packet = new UDPPacket(data, length);
-                    break;
-                }
-                case IPPROTO_ICMP: {
-                    packet = new ICMPPacket(data, length);
-                    break;
-                }
+                break;
             }
-            break;
-        }
-        case ETH_IPV6: {
-            uint8_t ipv6_protocol = IPV6Packet::parse_protocol(data);
-            switch (ipv6_protocol) {
-                case IPPROTO_TCP: {
-                    packet = new TCPPacket(data, length);
-                    break;
+            case ETH_IPV6: {
+                uint8_t ipv6_protocol = IPV6Packet::parse_protocol(data);
+                switch (ipv6_protocol) {
+                    case IPPROTO_TCP: {
+                        auto tcp_packet = new TCPPacket(data, length);
+                        if (tcp_packet->detect_tls()) packet = new TLSPacket(data, length);
+                        else if (tcp_packet->detect_http()) packet = new HTTPPacket(data, length);
+                        else packet = tcp_packet;
+                        break;
+                    }
+                    case IPPROTO_UDP: {
+                        packet = new UDPPacket(data, length);
+                        break;
+                    }
+                    case IPPROTO_ICMPV6: {
+                        packet = new ICMPV6Packet(data, length);
+                        break;
+                    }
                 }
-                case IPPROTO_UDP: {
-                    packet = new UDPPacket(data, length);
-                    break;
-                }
-                case IPPROTO_ICMPV6: {
-                    packet = new ICMPV6Packet(data, length);
-                    break;
-                }
+                break;
             }
-            break;
         }
+    }
+    catch (...) {
+        qDebug() << "error";
     }
     return packet;
 }
@@ -898,4 +1181,111 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *pktheader, const u_
         auto packet = parse(pkt_data, pktheader->len);
         if (packet != nullptr) emit mainwindow->packet_table_widget_packet_received(packet, pktheader->ts);
     }
+}
+
+HTTPPacket::HTTPPacket(const u_char *data, uint32_t length) : EthernetPacket(data, length), TCPPacket(data, length) {}
+
+void HTTPPacket::get_info(char *str) {
+    uint32_t index = TCPPacket::total_offset;
+    for (; data[index] != '\n'; index++) {
+        str[index - TCPPacket::total_offset] = data[index];
+    }
+    str[index - TCPPacket::total_offset] = '\0';
+}
+
+void HTTPPacket::fill(QTreeWidget *widget) {
+    TCPPacket::fill(widget);
+    auto top_item = new QTreeWidgetItem(QStringList{"Hypertext Transfer Protocol"});
+    char content[70];
+    uint32_t index = TCPPacket::total_offset;
+    for (; data[index] != '\n'; index++) {
+        content[index - TCPPacket::total_offset] = data[index];
+    }
+    content[index - TCPPacket::total_offset] = '\0';
+    auto content_item = new QTreeWidgetItem(QStringList{content});
+    top_item->addChild(content_item);
+    widget->addTopLevelItem(top_item);
+}
+
+void HTTPPacket::get_protocol(char *str) {
+    sprintf(str, "HTTP");
+}
+
+bool HTTPPacket::is_http() {
+    return true;
+}
+
+TLSPacket::TLSPacket(const u_char *data, uint32_t length) : EthernetPacket(data, length), TCPPacket(data, length) {
+    tls_header = *(TLSHeader *) (ParsedPacket::data + TCPPacket::total_offset);
+}
+
+void TLSPacket::get_info(char *str) {
+    switch (tls_header.type) {
+        case 20:
+            sprintf(str, "ChangeCipherSpec");
+            break;
+        case 21:
+            sprintf(str, "Alert");
+            break;
+        case 22:
+            sprintf(str, "HandShake");
+            break;
+        case 23:
+            sprintf(str, "Application");
+            break;
+        case 24:
+            sprintf(str, "HeartBeat");
+            break;
+    }
+}
+
+void TLSPacket::fill(QTreeWidget *widget) {
+    TCPPacket::fill(widget);
+
+    auto top_item = new QTreeWidgetItem(QStringList{"Transport Layer Security"});
+
+    char intro_info[40];
+    sprintf(intro_info, "TLSv1.%d Record Layer", tls_header.version_minor == 0x01 ? 0 : 2);
+    auto intro_item = new QTreeWidgetItem(QStringList{intro_info});
+
+    char type_info[40];
+    switch (tls_header.type) {
+        case 20:
+            sprintf(type_info, "ChangeCipherSpec (20)");
+            break;
+        case 21:
+            sprintf(type_info, "Alert (21)");
+            break;
+        case 22:
+            sprintf(type_info, "HandShake (22)");
+            break;
+        case 23:
+            sprintf(type_info, "Application (23)");
+            break;
+        case 24:
+            sprintf(type_info, "HeartBeat (24)");
+            break;
+    }
+    auto type_item = new QTreeWidgetItem(QStringList{type_info});
+
+    char version_info[40];
+    sprintf(version_info, "Version: TLS 1.%d (0x%04x)", tls_header.version_minor == 0x01 ? 0 : 2,
+            (uint16_t) tls_header.version_major << 8 | (uint16_t) tls_header.version_minor);
+    auto version_item = new QTreeWidgetItem(QStringList{version_info});
+
+    char length_info[40];
+    sprintf(length_info, "Length: %d", ntohs(tls_header.length));
+    auto length_item = new QTreeWidgetItem(QStringList{length_info});
+
+    intro_item->addChildren(QList<QTreeWidgetItem *>{type_item, version_item, length_item});
+    top_item->addChild(intro_item);
+    widget->addTopLevelItem(top_item);
+}
+
+void TLSPacket::get_protocol(char *str) {
+    sprintf(str, "TLS");
+}
+
+bool TLSPacket::is_tls() {
+    return true;
 }

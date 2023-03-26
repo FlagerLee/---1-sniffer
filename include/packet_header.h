@@ -104,4 +104,11 @@ struct ICMPV6Header {
     uint16_t checksum;
 };
 
+struct TLSHeader {
+    uint8_t type;
+    uint8_t version_major;
+    uint8_t version_minor;
+    uint16_t length;
+};
+
 #endif //SNIFFER_PACKET_HEADER_H

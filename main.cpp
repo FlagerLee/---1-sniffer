@@ -7,7 +7,6 @@
 
 
 int main(int argc, char *argv[]) {
-    int x = 0;
     QApplication a(argc, argv);
     sniffer_mainwindow mainwindow;
     mainwindow.show();

@@ -16,8 +16,12 @@ public:
 
     ~PacketTableWidget();
 
+    void clear();
+
 private:
     std::vector<ParsedPacket *> packets;
+    std::vector<std::string> filter;
+    std::vector<timeval> tvs;
     int index;
     timeval start_time;
 
@@ -29,6 +33,7 @@ public slots:
 
     void on_packet_received(ParsedPacket *packet, timeval tv);
     void on_cell_clicked(int row, int column);
+    void on_filter_set(std::vector<std::string> filter);
 
 };
 
